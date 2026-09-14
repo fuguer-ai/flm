@@ -8,12 +8,42 @@ Token embeddings drive the full fixed graph. A **278,528-parameter adapter** rea
 
 This repository contains local training and inference. It needs no API key, account, web server, or hosted inference service.
 
+## Fastest first run: talk to the fly
+
+For a quick proof of concept, train a tiny adapter from the bundled synthetic examples instead of downloading the external conversation corpus. The connectome and language model are still the real full-size ones; only the training set is intentionally tiny. This produces a smoke-test checkpoint, not a benchmark.
+
+Use **Python 3.12 on Linux/macOS**. On Windows, use WSL2/Ubuntu so the optional C graph kernel builds as documented.
+
+```sh
+git clone https://github.com/fuguer-ai/flm.git
+cd flm
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+python scripts/download.py --model-only
+python scripts/prepare_graph.py
+python scripts/build_graph_kernel.py       # recommended; needs cc/Clang/GCC
+python scripts/train_quick.py
+python scripts/chat.py --run runs/quick-chat
+```
+
+If no C compiler is available, skip `build_graph_kernel.py`; `train_quick.py` falls back to SciPy and runs the same recurrence more slowly. The quick trainer defaults to 8 bundled examples, at most 24 supervised answer tokens per example, and 12 inexpensive adapter epochs after graph features are extracted. It writes `runs/quick-chat/adapter.safetensors`, `run.json`, `report.json`, and `training.json`.
+
+A one-shot test after training is:
+
+```sh
+python scripts/chat.py --run runs/quick-chat --prompt "What do you think about being wired through a fruit-fly connectome?" --seed 42
+```
+
+For controlled train/validation/test comparisons and the matched direct-input control, use the full training recipe below instead.
+
 ## Train
 
 Use **Python 3.12** on macOS or Linux. Apple Silicon uses MPS, NVIDIA GPUs use CUDA when supported by the installed PyTorch build, and CPU works too. Plan for several GB of downloads, at least 10 GB of free disk space, and preferably 16 GB or more RAM. CPU training is slower; runtime depends on hardware.
 
 ```sh
-git clone https://github.com/nftechie/flm.git
+git clone https://github.com/fuguer-ai/flm.git
 cd flm
 python3.12 -m venv .venv
 source .venv/bin/activate
